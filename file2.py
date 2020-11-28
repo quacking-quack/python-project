@@ -33,19 +33,21 @@ class Game_Object():
         display.blit(self.sprite,(self.x,self.y))
 
 class Projectile(Game_Object):
-    def __init__(self,x,y,width,height,sprite,speed,damage):
+    def __init__(self,x,y,width,height,sprite,speed,damage,owner):
         Game_Object.__init__(self,x,y,width,height,sprite)
         self.speed = speed
         self.speed_x = 0
         self.speed_y = 0
         self.timer = 0
         self.damage = damage
+        self.owner = owner
+        self.to_remove = False
         self.hitbox = pygame.Rect((self.x,self.y,self.width,self.height))
 
     def move(self):
         self.x -= self.speed_x
         self.y -= self.speed_y
-        self.hitbox = pygame.Rect((self.x,self.y,self.width,self.height))
+        #self.hitbox = pygame.Rect((self.x,self.y,self.width,self.height))
 
     def set_speed(self,point):
         a = self.x - point.x
@@ -56,6 +58,8 @@ class Projectile(Game_Object):
     def draw(self):
         display.blit(self.sprite,(self.x,self.y))
         self.timer += 1
+        if self.timer > 90:
+            self.owner.remove(self)
 
 class Hero(Game_Object):
     def __init__(self,x,y,width,height,health,speed,rotate_speed,sprite):
@@ -84,8 +88,8 @@ class Hero(Game_Object):
         self.center.x += self.speed*cos(self.angle*pi/180)*c
         self.center.y += self.speed*sin(self.angle*pi/180)*(-1)*c#*self.c
 
-    def get_damage(self,proj):
-        self.health -= proj.damage
+    def get_damage(self,damage):
+        self.health -= damage
 ##        if self.health < 0:
 ##            enemies.remove(self)
         
@@ -135,7 +139,7 @@ class Enemy(Hero):
     
     def shoot(self,target):
         self.timer = timer
-        self.projectiles.append(Projectile(self.x-10,self.y-10,20,20,'sprites/projectile.png',20,5))
+        self.projectiles.append(Projectile(self.x-10,self.y-10,20,20,'sprites/projectile.png',20,5,self.projectiles))
         self.projectiles[-1].set_speed(Point(self.x+self.width*(cos(self.angle*pi/180)),self.y+self.height*(sin(self.angle*pi/180)*(-1))))
     
     def move(self,target):
@@ -145,8 +149,8 @@ class Enemy(Hero):
             self.center.x += self.speed*cos(self.angle*pi/180)
             self.center.y += self.speed*sin(self.angle*pi/180)*(-1)#self.c
 
-    def get_damage(self,proj):
-        self.health -= proj.damage
+    def get_damage(self,damage):
+        self.health -= damage
         if self.health < 0:
             enemies.remove(self)
             
@@ -166,7 +170,7 @@ class Gun():
     def shoot(self,x,y):
         shoot_sound.play()
         for i in range(self.buck):
-            self.owner.projectiles.append(Projectile(self.owner.x-10+random.randrange(-self.disp,self.disp),self.owner.y-10+random.randrange(-self.disp,self.disp),20,20,'sprites/projectile.png',40,10))
+            self.owner.projectiles.append(Projectile(self.owner.x-10+random.randrange(-self.disp,self.disp),self.owner.y-10+random.randrange(-self.disp,self.disp),20,20,'sprites/projectile.png',25,10,self.owner.projectiles))
             self.owner.projectiles[-1].set_speed(Point(x+random.randrange(-self.disp,self.disp)*5,y+random.randrange(-self.disp,self.disp)*5))
 
     def draw(self,x,y):
@@ -185,7 +189,7 @@ class Gun():
 game_over = False
 clock = pygame.time.Clock()
 hero = Hero(300,100,64,64,100,10,5,'sprites/ship_0.png')
-hero.gun = Gun(hero,pygame.image.load('sprites/ship_gun_1.png'),5,5)
+hero.gun = Gun(hero,pygame.image.load('sprites/ship_gun_1.png'),1)
 shoot_sound = pygame.mixer.Sound('sounds/shot.ogg')
 enemies = []
 timer = 0
@@ -232,13 +236,23 @@ while not game_over:
         for p in enemy.projectiles:
             p.move()
             p.draw()
-            if p.hitbox.colliderect(hero.hitbox):
+            if dist(p.x,p.y,hero.x,hero.y) < hero.width/2:
+                if not p.to_remove:
+                    hero.get_damage(p.damage)
+                    p.to_remove = True
+            if p.to_remove:
                 enemy.projectiles.remove(p)
-                hero.get_damage(p)
     for p in hero.projectiles:
         p.move()
         p.draw()
-        #for enemy in enemies:
+        for enemy in enemies:
+            if dist(p.x,p.y,enemy.x,enemy.y) < enemy.width/2: 
+                if not p.to_remove:
+                    enemy.get_damage(p.damage)
+                    p.to_remove = True
+        if p.to_remove:
+            hero.projectiles.remove(p)
+                
             
     pygame.display.update()
     if keys[pygame.K_d]:
@@ -251,7 +265,7 @@ while not game_over:
         hero.move(1)
     elif keys[pygame.K_s]:   
         hero.move(-0.5)
-    if keys[pygame.K_p] and not enemies:   
+    if keys[pygame.K_p]:   
         enemies.append(Enemy(400,400,64,64,40,5,4,'sprites/enemy1.png'))
 ##    if hero.angle > 90 or hero.angle < 270:
 ##        hero.c = -1
