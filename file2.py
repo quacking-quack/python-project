@@ -7,6 +7,8 @@ disp_height = 640
 #gunship1 = [48,128]
 display = pygame.display.set_mode((disp_width,disp_height))
 bg = pygame.image.load('sprites/space_or_something.png')
+red_p = pygame.image.load('sprites/projectile.png')
+green_p = pygame.image.load('sprites/projectile2.png')
 ##pygame.mixer.music.load('soundtrack1.ogg')
 ##pygame.mixer.music.play(-1)
 def dist(x1,y1,x2,y2):
@@ -75,6 +77,7 @@ class Hero(Game_Object):
         self.timer = 0
         self.gun = 0
         self.health = health
+        self.alive = True
 
     def draw(self):
         sprite2 = pygame.transform.rotate((self.sprite),self.angle)
@@ -100,10 +103,19 @@ class Hero(Game_Object):
 ##        self.center.x -= speed*cos(self.angle*pi/180)
 ##        self.center.y -= speed*sin(self.angle*pi/180)*(-1)#self.c
 
-class Enemy(Hero):
-    def set_stats(self,target):
+class Enemy(Hero): 
+    def __init__(self,x,y,width,height,health,speed,rotate_speed,sprite,rate_of_fire,a,n,stop_distance,target):
+        Hero.__init__(self,x,y,width,height,health,speed,rotate_speed,sprite)
+        self.rate_of_fire = rate_of_fire
+        self.a = a
+        self.n = n
+        self.stop_distance = stop_distance
+        self.target = target
+        
+        
+    def set_stats(self):
         t = 1
-        angle = (atan2((self.y-target.y),(target.x-self.x))*57.241)%360
+        angle = (atan2((self.y-self.target.y),(self.target.x-self.x))*57.241)%360
 ##        angle %= 360
 ##        font = pygame.font.SysFont('calibri', 50, "bold")
 ##        text = font.render(f'{angle}', 1, (255,255,255))
@@ -137,13 +149,14 @@ class Enemy(Hero):
 ##        sprite = pygame.transform.rotate(self.sprite,self.c*asin((target.y-self.y)/dist(self.x,self.y,target.x,target.y))*57)
 ##        display.blit(sprite, (self.x-(sprite.get_width()//2),self.y-(sprite.get_height()//2)))
     
-    def shoot(self,target):
+    def shoot(self):
         self.timer = timer
-        self.projectiles.append(Projectile(self.x-10,self.y-10,20,20,'sprites/projectile.png',20,5,self.projectiles))
-        self.projectiles[-1].set_speed(Point(self.x+self.width*(cos(self.angle*pi/180)),self.y+self.height*(sin(self.angle*pi/180)*(-1))))
+        for i in range(self.n):
+            self.projectiles.append(Projectile(self.x-10,self.y-10,20,20,'sprites/projectile2.png',20,5,self.projectiles))
+            self.projectiles[-1].set_speed(Point(self.x+100*(cos((self.angle+self.a*i)*pi/180)),self.y+100*(sin((self.angle+self.a*i)*pi/180)*(-1))))
     
-    def move(self,target):
-        if (abs(abs(self.x) - abs(target.x)) > 100) or (abs(abs(self.y) - abs(target.y)) > 100):
+    def move(self):
+        if (abs(abs(self.x) - abs(self.target.x)) > self.stop_distance) or (abs(abs(self.y) - abs(self.target.y)) > self.stop_distance):
             self.x += self.speed*cos(self.angle*pi/180)
             self.y += self.speed*sin(self.angle*pi/180)*(-1)#self.c
             self.center.x += self.speed*cos(self.angle*pi/180)
@@ -152,8 +165,21 @@ class Enemy(Hero):
     def get_damage(self,damage):
         self.health -= damage
         if self.health < 0:
-            enemies.remove(self)
-            
+            self.alive = False
+
+class Round_ship(Enemy):
+    def set_stats(self):
+        self.angle += self.rotate_speed
+        self.angle %= 360
+    
+    def move(self):
+        angle = (atan2((self.y-self.target.y),(self.target.x-self.x))*57.241)%360
+        if (abs(abs(self.x) - abs(self.target.x)) > self.stop_distance) or (abs(abs(self.y) - abs(self.target.y)) > self.stop_distance):
+            self.x += self.speed*cos(angle*pi/180)
+            self.y += self.speed*sin(angle*pi/180)*(-1)#self.c
+            self.center.x += self.speed*cos(angle*pi/180)
+            self.center.y += self.speed*sin(angle*pi/180)*(-1)#self.c
+        
 class Gun():
     def __init__(self,owner,sprite,disp,buck=1,x=0,y=0):
         self.owner = owner
@@ -225,31 +251,33 @@ while not game_over:
     #pygame.draw.rect(display,(255,0,0),(600,200,200,430))
     hero.gun.draw(pos[0],pos[1])
     for enemy in enemies:
-        enemy.set_stats(hero)
-        enemy.move(hero)
-##        font = pygame.font.SysFont('calibri', 50, "bold")
-##        text = font.render(f'{enemy.angle}', 1, (255,255,255))
-##        display.blit(text, (10,10))
-        enemy.draw()
-        if timer - enemy.timer > 15:
-            enemy.shoot(hero)
+        if enemy.alive:
+            enemy.set_stats()
+            enemy.move()
+            enemy.draw()
+            if timer - enemy.timer > enemy.rate_of_fire:
+                enemy.shoot()    
+        else:
+            if not enemy.projectiles:
+                enemies.remove(enemy)
         for p in enemy.projectiles:
-            p.move()
-            p.draw()
-            if dist(p.x,p.y,hero.x,hero.y) < hero.width/2:
-                if not p.to_remove:
-                    hero.get_damage(p.damage)
-                    p.to_remove = True
-            if p.to_remove:
-                enemy.projectiles.remove(p)
+                p.move()
+                p.draw()
+                if dist(p.x,p.y,hero.x,hero.y) < hero.width/2:
+                    if not p.to_remove:
+                        hero.get_damage(p.damage)
+                        p.to_remove = True
+                if p.to_remove:
+                    enemy.projectiles.remove(p)
     for p in hero.projectiles:
         p.move()
         p.draw()
         for enemy in enemies:
-            if dist(p.x,p.y,enemy.x,enemy.y) < enemy.width/2: 
-                if not p.to_remove:
-                    enemy.get_damage(p.damage)
-                    p.to_remove = True
+            if enemy.alive:
+                if dist(p.x,p.y,enemy.x,enemy.y) < enemy.width/2: 
+                    if not p.to_remove:
+                        enemy.get_damage(p.damage)
+                        p.to_remove = True
         if p.to_remove:
             hero.projectiles.remove(p)
                 
@@ -266,7 +294,9 @@ while not game_over:
     elif keys[pygame.K_s]:   
         hero.move(-0.5)
     if keys[pygame.K_p]:   
-        enemies.append(Enemy(400,400,64,64,40,5,4,'sprites/enemy1.png'))
+        enemies.append(Enemy(400,400,64,64,40,5,4,'sprites/enemy1.png',10,0,1,100,hero))
+    if keys[pygame.K_o]:   
+        enemies.append(Round_ship(400,400,64,64,100,1,2,'sprites/round_ship.png',2,90,4,100,hero))
 ##    if hero.angle > 90 or hero.angle < 270:
 ##        hero.c = -1
 ##    else:
