@@ -82,7 +82,8 @@ class Hero(Game_Object):
     def draw(self):
         sprite2 = pygame.transform.rotate((self.sprite),self.angle)
         self.hitbox = pygame.Rect(sprite2.get_rect())
-        pygame.draw.rect(display,(255,0,0),(self.x - self.health//2,self.y - sprite2.get_height()//2 - 20,self.health,8))
+        pygame.draw.rect(display,(255,255,255),(self.x - self.health//2-1,self.y - sprite2.get_height()//2 - 20-1,self.health+2,8))
+        pygame.draw.rect(display,(255,0,0),(self.x - self.health//2,self.y - sprite2.get_height()//2 - 20,self.health,6))
         display.blit(sprite2,(self.x-(sprite2.get_width()//2),self.y-(sprite2.get_height()//2)))
 
     def move(self,c):
