@@ -9,8 +9,10 @@ display = pygame.display.set_mode((disp_width,disp_height))
 bg = pygame.image.load('sprites/space_or_something.png')
 red_p = pygame.image.load('sprites/projectile.png')
 green_p = pygame.image.load('sprites/projectile2.png')
+scope = pygame.image.load('sprites/scope.png')
 ##pygame.mixer.music.load('soundtrack1.ogg')
 ##pygame.mixer.music.play(-1)
+scroll = [0,0]
 def dist(x1,y1,x2,y2):
     return(sqrt((x2-x1)**2+(y2-y1)**2))
 
@@ -44,7 +46,7 @@ class Projectile(Game_Object):
         self.damage = damage
         self.owner = owner
         self.to_remove = False
-        self.hitbox = pygame.Rect((self.x,self.y,self.width,self.height))
+        #self.hitbox = pygame.Rect((self.x,self.y,self.width,self.height))
 
     def move(self):
         self.x -= self.speed_x
@@ -58,7 +60,7 @@ class Projectile(Game_Object):
         self.speed_y = self.speed*(b/dist(self.x,self.y,point.x,point.y))
 
     def draw(self):
-        display.blit(self.sprite,(self.x,self.y))
+        display.blit(self.sprite,(int(self.x)+scroll[0],int(self.y)+scroll[1]))
         self.timer += 1
         if self.timer > 90:
             self.owner.remove(self)
@@ -81,10 +83,10 @@ class Hero(Game_Object):
 
     def draw(self):
         sprite2 = pygame.transform.rotate((self.sprite),self.angle)
-        self.hitbox = pygame.Rect(sprite2.get_rect())
-        pygame.draw.rect(display,(255,255,255),(self.x - self.health//2-1,self.y - sprite2.get_height()//2 - 20-1,self.health+2,8))
-        pygame.draw.rect(display,(255,0,0),(self.x - self.health//2,self.y - sprite2.get_height()//2 - 20,self.health,6))
-        display.blit(sprite2,(self.x-(sprite2.get_width()//2),self.y-(sprite2.get_height()//2)))
+        #self.hitbox = pygame.Rect(sprite2.get_rect())
+        pygame.draw.rect(display,(255,255,255),(int(self.x - self.health//2-1)+scroll[0],int(self.y - sprite2.get_height()//2 - 20-1)+scroll[1],self.health+2,8))
+        pygame.draw.rect(display,(255,0,0),(int(self.x - self.health//2)+scroll[0],int(self.y - sprite2.get_height()//2 - 20)+scroll[1],self.health,6))
+        display.blit(sprite2,(int(self.x-(sprite2.get_width()//2))+scroll[0],int(self.y-(sprite2.get_height()//2))+scroll[1]))
 
     def move(self,c):
         self.x += self.speed*cos(self.angle*pi/180)*c
@@ -137,24 +139,13 @@ class Enemy(Hero):
                 #self.angle -= self.rotate_speed
         #self.angle %= 360
         
-##    def draw(self,target):
-##        self.angle = acos((target.x-self.x)/dist(self.x,self.y,target.x,target.y))*57.241
-##        if self.angle > 89 and self.flipped:
-##            self.sprite = pygame.transform.flip(self.sprite,1,0)
-##            self.c = 1
-##            self.flipped = False
-##        elif self.angle < 89 and not self.flipped:
-##            self.sprite = pygame.transform.flip(self.sprite,1,0)
-##            self.c = -1
-##            self.flipped = True
-##        sprite = pygame.transform.rotate(self.sprite,self.c*asin((target.y-self.y)/dist(self.x,self.y,target.x,target.y))*57)
-##        display.blit(sprite, (self.x-(sprite.get_width()//2),self.y-(sprite.get_height()//2)))
-    
     def shoot(self):
         self.timer = timer
         for i in range(self.n):
-            self.projectiles.append(Projectile(self.x-10,self.y-10,20,20,'sprites/projectile2.png',20,5,self.projectiles))
-            self.projectiles[-1].set_speed(Point(self.x+100*(cos((self.angle+self.a*i)*pi/180)),self.y+100*(sin((self.angle+self.a*i)*pi/180)*(-1))))
+            a = (cos((self.angle+self.a*i)*pi/180))
+            b = sin((self.angle+self.a*i)*pi/180)*(-1)
+            self.projectiles.append(Projectile(self.x-10+self.width//2*a,self.y-10+self.height//2*b,20,20,'sprites/projectile2.png',5,5,self.projectiles))
+            self.projectiles[-1].set_speed(Point(self.x+100*a,self.y+100*b))
     
     def move(self):
         if (abs(abs(self.x) - abs(self.target.x)) > self.stop_distance) or (abs(abs(self.y) - abs(self.target.y)) > self.stop_distance):
@@ -169,8 +160,12 @@ class Enemy(Hero):
             self.alive = False
 
 class Round_ship(Enemy):
+    def __init__(self,x,y,width,height,health,speed,rotate_speed,sprite,rate_of_fire,a,n,stop_distance,target):
+        Enemy.__init__(self,x,y,width,height,health,speed,rotate_speed,sprite,rate_of_fire,a,n,stop_distance,target)
+        self.c = random.randrange(-1,2,2)
+        
     def set_stats(self):
-        self.angle += self.rotate_speed
+        self.angle += self.rotate_speed*self.c
         self.angle %= 360
     
     def move(self):
@@ -211,8 +206,10 @@ class Gun():
 ##            self.c = -1
 ##            self.flipped = True
         sprite = pygame.transform.rotate(self.sprite,self.angle)#self.c*asin((y-self.owner.y)/dist(self.owner.x,self.owner.y,x,y))*57)
-        display.blit(sprite, (self.owner.x-(sprite.get_width()//2),self.owner.y-(sprite.get_height()//2)))
-        
+        display.blit(sprite, (int(self.owner.x-(sprite.get_width()//2))+scroll[0],int(self.owner.y-(sprite.get_height()//2))+scroll[1]))
+def draw_scope():
+    display.blit(scope,(pos[0]+scroll[0],pos[1]+scroll[1]))
+    pygame.draw.line(display,(255,0,0),(int(hero.x)+scroll[0],int(hero.y)+scroll[1]),(pos[0]+12+scroll[0],pos[1]+12+scroll[1]))
 game_over = False
 clock = pygame.time.Clock()
 hero = Hero(300,100,64,64,100,10,5,'sprites/ship_0.png')
@@ -221,6 +218,7 @@ shoot_sound = pygame.mixer.Sound('sounds/shot.ogg')
 enemies = []
 timer = 0
 c = -1
+pygame.mouse.set_visible(0)
 while not game_over:
     keys = pygame.key.get_pressed()
     clock.tick(30)
@@ -244,11 +242,12 @@ while not game_over:
 ##    text2 = font.render(f'{pos[0]}:{pos[1]}', 1, (255,255,255))
     
 ##    display.blit(text2, (pos[0],pos[1]))
-    pygame.draw.line(display,(155,0,0),(hero.x,hero.y),(pos[0],pos[1]))
+    
 ##    pygame.draw.line(display,(255,255,255),(hero.center.x,hero.center.y),(pos[0],hero.center.y))
 ##    pygame.draw.line(display,(255,255,255),(pos[0],hero.center.y),(pos[0],pos[1]))
     
     hero.draw()
+    
     #pygame.draw.rect(display,(255,0,0),(600,200,200,430))
     hero.gun.draw(pos[0],pos[1])
     for enemy in enemies:
@@ -258,18 +257,19 @@ while not game_over:
             enemy.draw()
             if timer - enemy.timer > enemy.rate_of_fire:
                 enemy.shoot()    
-        else:
-            if not enemy.projectiles:
-                enemies.remove(enemy)
         for p in enemy.projectiles:
-                p.move()
-                p.draw()
-                if dist(p.x,p.y,hero.x,hero.y) < hero.width/2:
-                    if not p.to_remove:
-                        hero.get_damage(p.damage)
-                        p.to_remove = True
-                if p.to_remove:
-                    enemy.projectiles.remove(p)
+            p.move()
+            p.draw()
+            if dist(p.x,p.y,hero.x,hero.y) < hero.width/2:
+                if not p.to_remove:
+                    hero.get_damage(p.damage)
+                    p.to_remove = True
+        for p in enemy.projectiles:
+            if p.to_remove:
+                enemy.projectiles.remove(p)
+    for enemy in enemies:
+        if not enemy.projectiles:
+            enemies.remove(enemy)
     for p in hero.projectiles:
         p.move()
         p.draw()
@@ -279,10 +279,11 @@ while not game_over:
                     if not p.to_remove:
                         enemy.get_damage(p.damage)
                         p.to_remove = True
+    for p in hero.projectiles:
         if p.to_remove:
             hero.projectiles.remove(p)
                 
-            
+    draw_scope()        
     pygame.display.update()
     if keys[pygame.K_d]:
         hero.angle -= hero.rotate_speed
@@ -295,11 +296,12 @@ while not game_over:
     elif keys[pygame.K_s]:   
         hero.move(-0.5)
     if keys[pygame.K_p]:   
-        enemies.append(Enemy(400,400,64,64,40,5,4,'sprites/enemy1.png',10,0,1,100,hero))
+        enemies.append(Enemy(400,400,64,64,40,4,4,'sprites/enemy1.png',10,0,1,100,hero))
     if keys[pygame.K_o]:   
-        enemies.append(Round_ship(400,400,64,64,100,1,2,'sprites/round_ship.png',2,90,4,100,hero))
+        enemies.append(Round_ship(400,400,64,64,100,1,1,'sprites/round_ship.png',2,90,4,100,hero))
 ##    if hero.angle > 90 or hero.angle < 270:
 ##        hero.c = -1
 ##    else:
 ##        hero.c = 1
+    
     timer += 1
