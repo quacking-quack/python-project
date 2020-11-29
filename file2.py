@@ -495,7 +495,7 @@ def main_menu():
         clock.tick(20)
         display.fill((0,0,0))
         font = pygame.font.Font("C:\Windows\Fonts\OCRAEXT.TTF", 100)
-        text = font.render('Game name', 1, (255,255,255))
+        text = font.render('Darkwar', 1, (255,255,255))
         display.blit(bg,(0,0))
         display.blit(text,(disp_width//2 - text.get_width()//2,50))
         font = pygame.font.Font("C:\Windows\Fonts\OCRAEXT.TTF",50)
