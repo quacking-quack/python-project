@@ -6,12 +6,13 @@ disp_width = 800
 disp_height = 640
 #gunship1 = [48,128]
 display = pygame.display.set_mode((disp_width,disp_height))
-bg = pygame.image.load('sprites/space_or_something.png')
+bg = pygame.image.load('sprites/bg.png')
 red_p = pygame.image.load('sprites/projectile.png')
 green_p = pygame.image.load('sprites/projectile2.png')
 scope = pygame.image.load('sprites/scope.png')
 ##pygame.mixer.music.load('soundtrack1.ogg')
 ##pygame.mixer.music.play(-1)
+true_scroll = [0,0]
 scroll = [0,0]
 def dist(x1,y1,x2,y2):
     return(sqrt((x2-x1)**2+(y2-y1)**2))
@@ -60,9 +61,9 @@ class Projectile(Game_Object):
         self.speed_y = self.speed*(b/dist(self.x,self.y,point.x,point.y))
 
     def draw(self):
-        display.blit(self.sprite,(int(self.x)+scroll[0],int(self.y)+scroll[1]))
+        display.blit(self.sprite,(int(self.x)-scroll[0],int(self.y)-scroll[1]))
         self.timer += 1
-        if self.timer > 90:
+        if self.timer > 210:
             self.owner.remove(self)
 
 class Hero(Game_Object):
@@ -84,15 +85,17 @@ class Hero(Game_Object):
     def draw(self):
         sprite2 = pygame.transform.rotate((self.sprite),self.angle)
         #self.hitbox = pygame.Rect(sprite2.get_rect())
-        pygame.draw.rect(display,(255,255,255),(int(self.x - self.health//2-1)+scroll[0],int(self.y - sprite2.get_height()//2 - 20-1)+scroll[1],self.health+2,8))
-        pygame.draw.rect(display,(255,0,0),(int(self.x - self.health//2)+scroll[0],int(self.y - sprite2.get_height()//2 - 20)+scroll[1],self.health,6))
-        display.blit(sprite2,(int(self.x-(sprite2.get_width()//2))+scroll[0],int(self.y-(sprite2.get_height()//2))+scroll[1]))
+        pygame.draw.rect(display,(255,255,255),(int(self.x - self.health//2-1-scroll[0]),int(self.y - sprite2.get_height()//2 - 20-1-scroll[1]),self.health+2,8))
+        pygame.draw.rect(display,(255,0,0),(int(self.x - self.health//2-scroll[0]),int(self.y - sprite2.get_height()//2 - 20-scroll[1]),self.health,6))
+        display.blit(sprite2,(int(self.x-(sprite2.get_width()//2))-scroll[0],int(self.y-(sprite2.get_height()//2))-scroll[1]))
 
     def move(self,c):
-        self.x += self.speed*cos(self.angle*pi/180)*c
-        self.y += self.speed*sin(self.angle*pi/180)*(-1)*c#self.c
-        self.center.x += self.speed*cos(self.angle*pi/180)*c
-        self.center.y += self.speed*sin(self.angle*pi/180)*(-1)*c#*self.c
+        if ((self.x + self.speed*cos(self.angle*pi/180)*c) < 1500) and ((self.x + self.speed*cos(self.angle*pi/180)*c) > 400):
+            self.x += self.speed*cos(self.angle*pi/180)*c
+            self.center.x += self.speed*cos(self.angle*pi/180)*c
+        if ((self.y + self.speed*sin(self.angle*pi/180)*(-1)*c) < 1500) and ((self.y + self.speed*sin(self.angle*pi/180)*(-1)*c) > 400):
+            self.y += self.speed*sin(self.angle*pi/180)*(-1)*c#self.c
+            self.center.y += self.speed*sin(self.angle*pi/180)*(-1)*c#*self.c
 
     def get_damage(self,damage):
         self.health -= damage
@@ -206,13 +209,24 @@ class Gun():
 ##            self.c = -1
 ##            self.flipped = True
         sprite = pygame.transform.rotate(self.sprite,self.angle)#self.c*asin((y-self.owner.y)/dist(self.owner.x,self.owner.y,x,y))*57)
-        display.blit(sprite, (int(self.owner.x-(sprite.get_width()//2))+scroll[0],int(self.owner.y-(sprite.get_height()//2))+scroll[1]))
+        display.blit(sprite, (int(self.owner.x-(sprite.get_width()//2))-scroll[0],int(self.owner.y-(sprite.get_height()//2))-scroll[1]))
 def draw_scope():
-    display.blit(scope,(pos[0]+scroll[0],pos[1]+scroll[1]))
-    pygame.draw.line(display,(255,0,0),(int(hero.x)+scroll[0],int(hero.y)+scroll[1]),(pos[0]+12+scroll[0],pos[1]+12+scroll[1]))
+    display.blit(scope,(pos[0],pos[1]))
+    pygame.draw.line(display,(255,0,0),(int(hero.x)-scroll[0],int(hero.y)-scroll[1]),(pos[0]+12,pos[1]+12))
+
+def change_scroll():
+    global scroll,true_scroll
+    true_scroll[0] += (hero.x - scroll[0] - 432)/10
+    true_scroll[1] += (hero.y - scroll[1] - 352)/10
+    scroll = true_scroll.copy()
+    scroll[0] = int(scroll[0])
+    scroll[1] = int(scroll[1])
+##    pos[0] -= scroll[0]
+##    pos[1] -= scroll[1]
+    
 game_over = False
 clock = pygame.time.Clock()
-hero = Hero(300,100,64,64,100,10,5,'sprites/ship_0.png')
+hero = Hero(600,600,64,64,100,10,5,'sprites/ship_0.png')
 hero.gun = Gun(hero,pygame.image.load('sprites/ship_gun_1.png'),1)
 shoot_sound = pygame.mixer.Sound('sounds/shot.ogg')
 enemies = []
@@ -223,19 +237,20 @@ while not game_over:
     keys = pygame.key.get_pressed()
     clock.tick(30)
     for event in pygame.event.get():
-        pos = pygame.mouse.get_pos()
+        pos = [pygame.mouse.get_pos()[0],pygame.mouse.get_pos()[1]]
+        
         
         if event.type == pygame.QUIT:
             pygame.quit()
             quit()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            hero.gun.shoot(pos[0],pos[1])
+            hero.gun.shoot(pos[0]+scroll[0],pos[1]+scroll[1])
 ##            shoot_sound.play()
 ##            hero.projectiles.append(Projectile(hero.x-10,hero.y-10,20,20,'projectile.png',40))
 ##            hero.projectiles[-1].set_speed(Point(pos[0],pos[1]))
     angle = acos((pos[0]-hero.center.x)/dist(hero.center.x,hero.center.y,pos[0],pos[1]))*57.241
-    display.blit(bg,(0,0))
+    display.blit(bg,(0-scroll[0]//2,0-scroll[1]//2))
 ##    font = pygame.font.SysFont('calibri', 50, "bold")
 ##    text = font.render(f'{hero.angle}', 1, (255,255,255))
 ##    font = pygame.font.SysFont('calibri', 25, "bold")
@@ -245,11 +260,11 @@ while not game_over:
     
 ##    pygame.draw.line(display,(255,255,255),(hero.center.x,hero.center.y),(pos[0],hero.center.y))
 ##    pygame.draw.line(display,(255,255,255),(pos[0],hero.center.y),(pos[0],pos[1]))
-    
+    change_scroll()
     hero.draw()
     
     #pygame.draw.rect(display,(255,0,0),(600,200,200,430))
-    hero.gun.draw(pos[0],pos[1])
+    hero.gun.draw(pos[0]+scroll[0],pos[1]+scroll[1])
     for enemy in enemies:
         if enemy.alive:
             enemy.set_stats()
