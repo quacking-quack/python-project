@@ -592,7 +592,7 @@ while not game_over:
         hero.draw()
         draw_bounds()
         if not enemies:
-            a = random.randrange(0,9)
+            a = random.randrange(0,8)
             enemies.append(Enemy(spawn_zones[a][0],spawn_zones[a][1],64,64,40,4,4,'sprites/enemy1.png',10,1,1,100,(10,5),hero))
             for i in range(score//2):
                 b = random.randrange(0,9)
